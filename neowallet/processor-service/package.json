@@ -1,0 +1,31 @@
+{
+  "name": "processor-service",
+  "version": "1.0.0",
+  "description": "NeoWallet - Microservicio de procesamiento de transferencias P2P",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "test": "jest --coverage --forceExit",
+    "test:watch": "jest --watch"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2",
+    "node-fetch": "^2.7.0",
+    "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.0",
+    "supertest": "^6.3.4"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "coverageDirectory": "coverage",
+    "collectCoverageFrom": [
+      "src/**/*.js"
+    ]
+  }
+}

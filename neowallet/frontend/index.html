@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NeoWallet — Panel de Control</title>
+<style>
+  :root {
+    --bg:        #0f1117;
+    --bg2:       #1a1d27;
+    --bg3:       #21253a;
+    --border:    #2e3250;
+    --accent:    #6c63ff;
+    --accent2:   #4ade80;
+    --danger:    #f87171;
+    --warn:      #fbbf24;
+    --text:      #e8eaf6;
+    --muted:     #7b82a8;
+    --mono:      'Fira Code', 'Cascadia Code', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+
+  /* TOPBAR */
+  .topbar { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .logo { display: flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 600; }
+  .logo-icon { width: 32px; height: 32px; background: var(--accent); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #374151; display: inline-block; margin-right: 6px; transition: background .3s; }
+  .status-dot.ok { background: var(--accent2); box-shadow: 0 0 6px var(--accent2); }
+  .status-dot.err { background: var(--danger); }
+  .status-label { font-size: 12px; color: var(--muted); }
+
+  /* LAYOUT */
+  .layout { display: grid; grid-template-columns: 220px 1fr; min-height: calc(100vh - 56px); }
+
+  /* SIDEBAR */
+  .sidebar { background: var(--bg2); border-right: 1px solid var(--border); padding: 20px 12px; }
+  .nav-label { font-size: 10px; font-weight: 600; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; padding: 0 8px; margin-bottom: 6px; margin-top: 16px; }
+  .nav-label:first-child { margin-top: 0; }
+  .nav-btn { width: 100%; text-align: left; background: none; border: none; color: var(--muted); font-size: 13px; padding: 8px 12px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all .15s; }
+  .nav-btn:hover { background: var(--bg3); color: var(--text); }
+  .nav-btn.active { background: var(--accent); color: #fff; }
+  .nav-btn svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+  /* MAIN */
+  .main { padding: 24px; overflow-y: auto; }
+  .page { display: none; }
+  .page.active { display: block; }
+  .page-title { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
+  .page-sub { font-size: 13px; color: var(--muted); margin-bottom: 24px; }
+
+  /* CARDS */
+  .card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+  .card-title { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 14px; }
+
+  /* FORM */
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 6px; }
+  .form-group input, .form-group select {
+    width: 100%; background: var(--bg3); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-size: 14px; padding: 9px 12px; outline: none; transition: border .2s;
+  }
+  .form-group input:focus, .form-group select:focus { border-color: var(--accent); }
+  .form-group select option { background: var(--bg2); }
+
+  .btn { padding: 9px 18px; border-radius: 8px; border: none; font-size: 13px; font-weight: 500; cursor: pointer; transition: all .15s; display: inline-flex; align-items: center; gap: 6px; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { opacity: .85; }
+  .btn-success { background: #166534; color: var(--accent2); }
+  .btn-success:hover { background: #14532d; }
+  .btn-danger { background: #7f1d1d; color: var(--danger); }
+  .btn-danger:hover { background: #6b1b1b; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+  /* RESPONSE BOX */
+  .response-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; font-family: var(--mono); font-size: 12px; line-height: 1.7; white-space: pre-wrap; word-break: break-all; min-height: 60px; color: var(--muted); margin-top: 14px; }
+  .response-box.success { border-color: #166534; color: var(--accent2); }
+  .response-box.error   { border-color: #7f1d1d; color: var(--danger); }
+  .response-box.loading { color: var(--warn); }
+
+  /* BALANCE DISPLAY */
+  .balance-big { font-size: 42px; font-weight: 700; color: var(--accent); font-family: var(--mono); }
+  .balance-name { font-size: 15px; color: var(--text); margin-bottom: 2px; }
+  .balance-email { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+
+  /* STATS GRID */
+  .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .stat-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .stat-value { font-size: 24px; font-weight: 600; font-family: var(--mono); }
+  .stat-value.green { color: var(--accent2); }
+  .stat-value.purple { color: var(--accent); }
+  .stat-value.yellow { color: var(--warn); }
+
+  /* TRANSACTION LIST */
+  .tx-list { display: flex; flex-direction: column; gap: 8px; }
+  .tx-item { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; }
+  .tx-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .tx-icon.sent     { background: #7f1d1d22; }
+  .tx-icon.received { background: #16653422; }
+  .tx-info { flex: 1; }
+  .tx-title { font-size: 13px; font-weight: 500; }
+  .tx-meta  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .tx-amount { font-family: var(--mono); font-weight: 600; font-size: 14px; }
+  .tx-amount.sent     { color: var(--danger); }
+  .tx-amount.received { color: var(--accent2); }
+  .tx-status { font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 20px; }
+  .s-completed  { background: #16653420; color: var(--accent2); }
+  .s-failed     { background: #7f1d1d20; color: var(--danger); }
+  .s-pending    { background: #92400e20; color: var(--warn); }
+  .s-rolled_back{ background: #4c1d9520; color: #a78bfa; }
+
+  /* SAGA FLOW */
+  .saga-flow { display: flex; align-items: center; gap: 0; margin: 14px 0; flex-wrap: wrap; }
+  .saga-step { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; font-size: 11px; font-weight: 500; font-family: var(--mono); }
+  .saga-step.active { border-color: var(--accent); color: var(--accent); }
+  .saga-step.done   { border-color: var(--accent2); color: var(--accent2); background: #16653410; }
+  .saga-step.failed { border-color: var(--danger); color: var(--danger); background: #7f1d1d10; }
+  .saga-step.rolled { border-color: #a78bfa; color: #a78bfa; }
+  .saga-arrow { color: var(--muted); margin: 0 4px; font-size: 16px; }
+
+  /* USERS GRID */
+  .users-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+  .user-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 10px; padding: 14px; cursor: pointer; transition: border-color .2s; }
+  .user-card:hover { border-color: var(--accent); }
+  .user-card.selected { border-color: var(--accent); background: #6c63ff15; }
+  .user-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 15px; margin-bottom: 8px; }
+  .user-name  { font-size: 13px; font-weight: 500; }
+  .user-bal   { font-size: 18px; font-weight: 700; font-family: var(--mono); color: var(--accent2); margin-top: 2px; }
+  .user-email { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--bg2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 16px; font-size: 13px; z-index: 999; max-width: 300px; transform: translateY(80px); opacity: 0; transition: all .3s; }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.ok   { border-color: #166534; }
+  .toast.err  { border-color: #7f1d1d; }
+
+  /* TABS */
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; background: var(--bg2); padding: 4px; border-radius: 10px; border: 1px solid var(--border); width: fit-content; }
+  .tab-btn { padding: 6px 16px; border-radius: 7px; border: none; background: none; color: var(--muted); font-size: 13px; cursor: pointer; transition: all .15s; }
+  .tab-btn.active { background: var(--accent); color: #fff; }
+
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .empty-state { color: var(--muted); font-size: 13px; text-align: center; padding: 24px; }
+
+  @media (max-width: 700px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .stats-grid, .users-grid, .row2 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-icon">💳</div>
+    NeoWallet
+    <span style="font-size:11px;background:#1a1d27;border:1px solid #2e3250;padding:2px 8px;border-radius:20px;color:#7b82a8;font-weight:400">MVP v1.0</span>
+  </div>
+  <div style="display:flex;gap:20px;align-items:center">
+    <div style="display:flex;align-items:center">
+      <span class="status-dot" id="dot-acc"></span>
+      <span class="status-label" id="lbl-acc">accounts:3000</span>
+    </div>
+    <div style="display:flex;align-items:center">
+      <span class="status-dot" id="dot-proc"></span>
+      <span class="status-label" id="lbl-proc">processor:3001</span>
+    </div>
+    <button class="btn btn-sm" style="background:var(--bg3);color:var(--muted);border:1px solid var(--border)" onclick="checkHealth()">↻ ping</button>
+  </div>
+</div>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="nav-label">Principal</div>
+  <button class="nav-btn active" onclick="goTo('dashboard',this)">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+    Dashboard
+  </button>
+  <button class="nav-btn" onclick="goTo('saldo',this)">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+    Consultar saldo
+  </button>
+  <div class="nav-label">Operaciones</div>
+  <button class="nav-btn" onclick="goTo('recargar',this)">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7-7 7 7"/></svg>
+    Recargar saldo
+  </button>
+  <button class="nav-btn" onclick="goTo('transferir',this)">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    Transferir P2P
+  </button>
+  <button class="nav-btn" onclick="goTo('historial',this)">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+    Historial
+  </button>
+  <div class="nav-label">Sistema</div>
+  <button class="nav-btn" onclick="goTo('api',this)">
+    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M8 9l3 3-3 3M13 15h3"/><rect x="2" y="4" width="20" height="16" rx="2"/></svg>
+    Consola API
+  </button>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- DASHBOARD -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-title">Dashboard</div>
+    <div class="page-sub">Resumen general del sistema NeoWallet</div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total en sistema</div>
+        <div class="stat-value green" id="stat-total">$0.00</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Usuarios activos</div>
+        <div class="stat-value purple" id="stat-users">3</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Servicios online</div>
+        <div class="stat-value yellow" id="stat-svc">0/2</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Usuarios y saldos</div>
+      <div class="users-grid" id="dash-users">
+        <div class="empty-state">Cargando usuarios...</div>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="loadDashboard()">↻ Actualizar</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Flujo Saga — transferencia P2P</div>
+      <div id="saga-demo" class="saga-flow">
+        <div class="saga-step">PENDING</div>
+        <div class="saga-arrow">→</div>
+        <div class="saga-step">DEBITED</div>
+        <div class="saga-arrow">→</div>
+        <div class="saga-step">COMPLETED</div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-top:8px">El patrón Saga garantiza que si el crédito falla, el débito se revierte automáticamente. No se pierde dinero.</div>
+    </div>
+  </div>
+
+  <!-- CONSULTAR SALDO -->
+  <div class="page" id="page-saldo">
+    <div class="page-title">Consultar saldo</div>
+    <div class="page-sub">RF-001 — GET /accounts/:id</div>
+    <div class="row2">
+      <div class="card">
+        <div class="card-title">Parámetros</div>
+        <div class="form-group">
+          <label>ID de usuario</label>
+          <input type="number" id="s-id" placeholder="1, 2 o 3" min="1" value="1"/>
+        </div>
+        <button class="btn btn-primary" onclick="consultarSaldo()">Consultar →</button>
+        <div class="response-box" id="s-res">Ingresa un ID y presiona Consultar</div>
+      </div>
+      <div class="card" id="s-profile" style="display:none">
+        <div class="card-title">Resultado</div>
+        <div class="balance-name" id="s-name"></div>
+        <div class="balance-email" id="s-email"></div>
+        <div class="balance-big" id="s-balance"></div>
+        <div style="margin-top:8px;font-size:12px;color:var(--muted)" id="s-updated"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RECARGAR -->
+  <div class="page" id="page-recargar">
+    <div class="page-title">Recargar saldo</div>
+    <div class="page-sub">RF-002 — POST /api/recharge</div>
+    <div class="row2">
+      <div class="card">
+        <div class="card-title">Datos de recarga</div>
+        <div class="form-group">
+          <label>Usuario</label>
+          <select id="r-user">
+            <option value="1">Usuario A (Rico) — id:1</option>
+            <option value="2">Usuario B (Pobre) — id:2</option>
+            <option value="3">Usuario C (Nuevo) — id:3</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Monto ($)</label>
+          <input type="number" id="r-amount" placeholder="100.00" min="0.01" step="0.01" value=""/>
+        </div>
+        <div class="form-group">
+          <label>Método de pago</label>
+          <select id="r-method">
+            <option value="CREDIT_CARD">Tarjeta de crédito</option>
+            <option value="DEBIT_CARD">Tarjeta de débito</option>
+            <option value="TRANSFER">Transferencia bancaria</option>
+            <option value="CASH">Efectivo</option>
+          </select>
+        </div>
+        <button class="btn btn-success" onclick="recargar()">↑ Recargar</button>
+        <div class="response-box" id="r-res">Completa el formulario y presiona Recargar</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Validaciones activas</div>
+        <div style="display:flex;flex-direction:column;gap:8px;font-size:13px">
+          <div>✅ Monto debe ser &gt; 0</div>
+          <div>✅ Monto no puede ser texto</div>
+          <div>✅ Usuario debe existir</div>
+          <div>✅ Operación atómica en BD</div>
+          <div>✅ Retorna nuevo saldo</div>
+        </div>
+        <div style="margin-top:16px">
+          <div class="card-title">Casos de error</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--muted);justify-content:flex-start" onclick="testRecargarError('negativo')">→ Probar monto negativo (-100)</button>
+            <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--muted);justify-content:flex-start" onclick="testRecargarError('cero')">→ Probar monto cero (0)</button>
+            <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--muted);justify-content:flex-start" onclick="testRecargarError('usuario')">→ Probar usuario inexistente (id:999)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRANSFERIR -->
+  <div class="page" id="page-transferir">
+    <div class="page-title">Transferir dinero P2P</div>
+    <div class="page-sub">RF-003 — POST /api/transfer — con Patrón Saga</div>
+    <div class="row2">
+      <div class="card">
+        <div class="card-title">Datos de transferencia</div>
+        <div class="form-group">
+          <label>De (sender)</label>
+          <select id="t-sender">
+            <option value="1">Usuario A — id:1</option>
+            <option value="2">Usuario B — id:2</option>
+            <option value="3">Usuario C — id:3</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Para (receiver)</label>
+          <select id="t-receiver">
+            <option value="2">Usuario B — id:2</option>
+            <option value="1">Usuario A — id:1</option>
+            <option value="3">Usuario C — id:3</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Monto ($)</label>
+          <input type="number" id="t-amount" placeholder="100.00" min="0.01" step="0.01" value=""/>
+        </div>
+        <button class="btn btn-primary" onclick="transferir()">→ Transferir</button>
+        <div class="response-box" id="t-res">Completa el formulario y presiona Transferir</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Estado Saga en tiempo real</div>
+        <div id="saga-live" class="saga-flow" style="flex-direction:column;gap:6px;align-items:flex-start">
+          <div style="color:var(--muted);font-size:12px">Esperando transferencia...</div>
+        </div>
+        <div style="margin-top:16px">
+          <div class="card-title">Probar errores</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--muted);justify-content:flex-start" onclick="testTransferError('self')">→ Auto-transferencia (id:1 → id:1)</button>
+            <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--muted);justify-content:flex-start" onclick="testTransferError('fondos')">→ Fondos insuficientes (C → A, $500)</button>
+            <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--muted);justify-content:flex-start" onclick="testTransferError('negativo')">→ Monto negativo</button>
+            <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--muted);justify-content:flex-start" onclick="testTransferError('noexiste')">→ Usuario inexistente (id:999)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORIAL -->
+  <div class="page" id="page-historial">
+    <div class="page-title">Historial de transacciones</div>
+    <div class="page-sub">RF-005 (Bonus) — GET /api/transactions/:user_id</div>
+    <div class="card">
+      <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:16px">
+        <div class="form-group" style="margin:0;flex:1">
+          <label>ID de usuario</label>
+          <input type="number" id="h-id" placeholder="1, 2 o 3" min="1" value="1"/>
+        </div>
+        <button class="btn btn-primary" onclick="cargarHistorial()">Cargar →</button>
+      </div>
+      <div id="h-list"><div class="empty-state">Ingresa un ID y carga el historial</div></div>
+    </div>
+  </div>
+
+  <!-- CONSOLA API -->
+  <div class="page" id="page-api">
+    <div class="page-title">Consola API</div>
+    <div class="page-sub">Envía requests directos a los servicios</div>
+    <div class="card">
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <select id="api-method" style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 12px;font-size:13px;outline:none">
+          <option>GET</option>
+          <option>POST</option>
+        </select>
+        <input id="api-url" style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 12px;font-family:var(--mono);font-size:13px;outline:none;min-width:200px" value="http://localhost:3000/accounts/1" />
+        <button class="btn btn-primary" onclick="apiSend()">Enviar →</button>
+      </div>
+      <div class="form-group">
+        <label>Body JSON (solo para POST)</label>
+        <textarea id="api-body" rows="4" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px 12px;font-family:var(--mono);font-size:12px;resize:vertical;outline:none">{"sender_id": 1, "receiver_id": 2, "amount": 50}</textarea>
+      </div>
+      <div class="card-title" style="margin-top:8px">URLs rápidas</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+        <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--muted)" onclick="setUrl('GET','http://localhost:3000/accounts/1')">GET saldo:1</button>
+        <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--muted)" onclick="setUrl('GET','http://localhost:3000/health')">GET health:3000</button>
+        <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--muted)" onclick="setUrl('GET','http://localhost:3001/health')">GET health:3001</button>
+        <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--muted)" onclick="setUrl('POST','http://localhost:3001/api/transfer')">POST transfer</button>
+        <button class="btn btn-sm" style="background:var(--bg3);border:1px solid var(--border);color:var(--muted)" onclick="setUrl('GET','http://localhost:3001/api/transactions/1')">GET historial:1</button>
+      </div>
+      <div class="card-title">Respuesta</div>
+      <div id="api-status" style="font-size:12px;color:var(--muted);margin-bottom:6px"></div>
+      <div class="response-box" id="api-res">Envía un request para ver la respuesta aquí</div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+</div><!-- /layout -->
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+const ACC = 'http://localhost:3000';
+const PROC = 'http://localhost:3001';
+
+// ── NAVEGACIÓN ──────────────────────────────────────────────
+function goTo(page, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  btn.classList.add('active');
+  if (page === 'dashboard') loadDashboard();
+  if (page === 'historial') document.getElementById('h-id').value = '1';
+}
+
+// ── HEALTH CHECK ─────────────────────────────────────────────
+async function checkHealth() {
+  const checks = [
+    { url: ACC + '/health', dot: 'dot-acc', lbl: 'lbl-acc', name: 'accounts:3000' },
+    { url: PROC + '/health', dot: 'dot-proc', lbl: 'lbl-proc', name: 'processor:3001' },
+  ];
+  let online = 0;
+  for (const c of checks) {
+    try {
+      const r = await fetch(c.url, { signal: AbortSignal.timeout(3000) });
+      const ok = r.ok;
+      document.getElementById(c.dot).className = 'status-dot ' + (ok ? 'ok' : 'err');
+      document.getElementById(c.lbl).textContent = c.name + (ok ? ' ✓' : ' ✗');
+      if (ok) online++;
+    } catch {
+      document.getElementById(c.dot).className = 'status-dot err';
+      document.getElementById(c.lbl).textContent = c.name + ' ✗';
+    }
+  }
+  document.getElementById('stat-svc').textContent = online + '/2';
+}
+
+// ── DASHBOARD ────────────────────────────────────────────────
+async function loadDashboard() {
+  const container = document.getElementById('dash-users');
+  container.innerHTML = '<div class="empty-state">Cargando...</div>';
+  let total = 0;
+  let html = '';
+  const colors = ['#6c63ff','#4ade80','#fbbf24'];
+  for (let i = 1; i <= 3; i++) {
+    try {
+      const r = await fetch(ACC + '/accounts/' + i);
+      const d = await r.json();
+      const bal = parseFloat(d.balance);
+      total += bal;
+      const initials = d.name.split(' ').slice(0,2).map(w=>w[0]).join('');
+      html += `<div class="user-card" onclick="goToUser(${d.id})">
+        <div class="user-avatar" style="background:${colors[i-1]}">${initials}</div>
+        <div class="user-name">${d.name}</div>
+        <div class="user-bal">$${bal.toFixed(2)}</div>
+        <div class="user-email">${d.email}</div>
+      </div>`;
+    } catch {
+      html += `<div class="user-card"><div class="user-name" style="color:var(--danger)">Error cargando usuario ${i}</div></div>`;
+    }
+  }
+  container.innerHTML = html;
+  document.getElementById('stat-total').textContent = '$' + total.toFixed(2);
+  await checkHealth();
+}
+
+function goToUser(id) {
+  document.getElementById('s-id').value = id;
+  goTo('saldo', document.querySelectorAll('.nav-btn')[1]);
+  consultarSaldo();
+}
+
+// ── CONSULTAR SALDO ──────────────────────────────────────────
+async function consultarSaldo() {
+  const id = document.getElementById('s-id').value.trim();
+  const resEl = document.getElementById('s-res');
+  const profile = document.getElementById('s-profile');
+
+  if (!id || isNaN(id) || parseInt(id) <= 0) {
+    setRes(resEl, 'error', '400 INVALID_ID\nEl ID debe ser un número entero positivo');
+    profile.style.display = 'none';
+    return;
+  }
+
+  setRes(resEl, 'loading', 'Consultando...');
+  try {
+    const r = await fetch(ACC + '/accounts/' + id);
+    const d = await r.json();
+    if (!r.ok) {
+      setRes(resEl, 'error', `${r.status} ${d.code}\n${d.error}`);
+      profile.style.display = 'none';
+    } else {
+      setRes(resEl, 'success', JSON.stringify(d, null, 2));
+      document.getElementById('s-name').textContent = d.name;
+      document.getElementById('s-email').textContent = d.email;
+      document.getElementById('s-balance').textContent = '$' + parseFloat(d.balance).toFixed(2);
+      document.getElementById('s-updated').textContent = 'Actualizado: ' + new Date(d.updated_at).toLocaleString('es-MX');
+      profile.style.display = 'block';
+    }
+  } catch (e) {
+    setRes(resEl, 'error', 'Error de conexión\n¿Está corriendo el accounts-service en :3000?');
+    profile.style.display = 'none';
+  }
+}
+
+// ── RECARGAR ─────────────────────────────────────────────────
+async function recargar(overrideData) {
+  const resEl = document.getElementById('r-res');
+  const data = overrideData || {
+    user_id: parseInt(document.getElementById('r-user').value),
+    amount: parseFloat(document.getElementById('r-amount').value),
+    payment_method: document.getElementById('r-method').value,
+  };
+
+  if (!overrideData) {
+    if (!data.amount || isNaN(data.amount)) {
+      setRes(resEl, 'error', '400 MISSING_FIELDS\nIngresa un monto válido'); return;
+    }
+    if (data.amount <= 0) {
+      setRes(resEl, 'error', '400 INVALID_AMOUNT\nEl monto debe ser mayor a cero'); return;
+    }
+  }
+
+  setRes(resEl, 'loading', 'Procesando recarga...');
+  try {
+    const r = await fetch(ACC + '/api/recharge', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const d = await r.json();
+    if (!r.ok) {
+      setRes(resEl, 'error', `${r.status} ${d.code}\n${d.error}`);
+    } else {
+      setRes(resEl, 'success', JSON.stringify(d, null, 2));
+      toast('✓ Recarga de $' + d.amount_recharged + ' exitosa', 'ok');
+    }
+  } catch {
+    setRes(resEl, 'error', 'Error de conexión\n¿Está corriendo el accounts-service en :3000?');
+  }
+}
+
+function testRecargarError(tipo) {
+  const casos = {
+    negativo: { user_id: 1, amount: -100, payment_method: 'TEST' },
+    cero:     { user_id: 1, amount: 0,    payment_method: 'TEST' },
+    usuario:  { user_id: 999, amount: 100, payment_method: 'TEST' },
+  };
+  recargar(casos[tipo]);
+}
+
+// ── TRANSFERIR ───────────────────────────────────────────────
+async function transferir(overrideData) {
+  const resEl = document.getElementById('t-res');
+  const sagaEl = document.getElementById('saga-live');
+  const data = overrideData || {
+    sender_id:   parseInt(document.getElementById('t-sender').value),
+    receiver_id: parseInt(document.getElementById('t-receiver').value),
+    amount:      parseFloat(document.getElementById('t-amount').value),
+  };
+
+  if (!overrideData) {
+    if (!data.amount || isNaN(data.amount)) {
+      setRes(resEl, 'error', '400 MISSING_FIELDS\nIngresa un monto válido'); return;
+    }
+    if (data.sender_id === data.receiver_id) {
+      setRes(resEl, 'error', '400 SELF_TRANSFER_NOT_ALLOWED\nNo puedes transferirte a ti mismo');
+      setSaga(sagaEl, 'self'); return;
+    }
+    if (data.amount <= 0) {
+      setRes(resEl, 'error', '400 INVALID_AMOUNT\nEl monto debe ser mayor a cero'); return;
+    }
+  }
+
+  setRes(resEl, 'loading', 'Iniciando transferencia Saga...');
+  setSaga(sagaEl, 'pending');
+
+  await sleep(300);
+  setSaga(sagaEl, 'debiting');
+
+  try {
+    const r = await fetch(PROC + '/api/transfer', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    const d = await r.json();
+
+    if (!r.ok) {
+      if (d.code === 'TRANSFER_ROLLED_BACK') {
+        setSaga(sagaEl, 'rolledback');
+        setRes(resEl, 'error', `502 TRANSFER_ROLLED_BACK\nEl crédito falló — el débito fue revertido\nEl dinero fue devuelto al sender`);
+      } else if (d.code === 'INSUFFICIENT_FUNDS') {
+        setSaga(sagaEl, 'failed');
+        setRes(resEl, 'error', `400 INSUFFICIENT_FUNDS\n${d.error}`);
+      } else {
+        setSaga(sagaEl, 'failed');
+        setRes(resEl, 'error', `${r.status} ${d.code}\n${d.error}`);
+      }
+      toast('✗ Transferencia fallida', 'err');
+    } else {
+      setSaga(sagaEl, 'completed');
+      setRes(resEl, 'success', JSON.stringify(d, null, 2));
+      toast('✓ Transferencia #' + d.transaction_id + ' completada', 'ok');
+    }
+  } catch {
+    setSaga(sagaEl, 'failed');
+    setRes(resEl, 'error', 'Error de conexión\n¿Está corriendo el processor-service en :3001?');
+  }
+}
+
+function testTransferError(tipo) {
+  const casos = {
+    self:     { sender_id: 1, receiver_id: 1, amount: 100 },
+    fondos:   { sender_id: 3, receiver_id: 1, amount: 500 },
+    negativo: { sender_id: 1, receiver_id: 2, amount: -50 },
+    noexiste: { sender_id: 999, receiver_id: 2, amount: 100 },
+  };
+  transferir(casos[tipo]);
+}
+
+function setSaga(el, state) {
+  const estados = {
+    pending: `
+      <div style="display:flex;align-items:center;gap:6px"><div class="saga-step active">PENDING</div><div class="saga-arrow">→</div><div class="saga-step">DEBITED</div><div class="saga-arrow">→</div><div class="saga-step">COMPLETED</div></div>
+      <div style="font-size:11px;color:var(--warn);margin-top:4px">⏳ Transacción registrada...</div>`,
+    debiting: `
+      <div style="display:flex;align-items:center;gap:6px"><div class="saga-step done">PENDING</div><div class="saga-arrow">→</div><div class="saga-step active">DEBITED</div><div class="saga-arrow">→</div><div class="saga-step">COMPLETED</div></div>
+      <div style="font-size:11px;color:var(--warn);margin-top:4px">⏳ Debitando al sender...</div>`,
+    completed: `
+      <div style="display:flex;align-items:center;gap:6px"><div class="saga-step done">PENDING</div><div class="saga-arrow">→</div><div class="saga-step done">DEBITED</div><div class="saga-arrow">→</div><div class="saga-step done">COMPLETED</div></div>
+      <div style="font-size:11px;color:var(--accent2);margin-top:4px">✓ Transferencia completada exitosamente</div>`,
+    failed: `
+      <div style="display:flex;align-items:center;gap:6px"><div class="saga-step done">PENDING</div><div class="saga-arrow">→</div><div class="saga-step failed">FAILED</div></div>
+      <div style="font-size:11px;color:var(--danger);margin-top:4px">✗ Transferencia fallida — sin cambios en saldos</div>`,
+    rolledback: `
+      <div style="display:flex;align-items:center;gap:6px"><div class="saga-step done">PENDING</div><div class="saga-arrow">→</div><div class="saga-step done">DEBITED</div><div class="saga-arrow">→</div><div class="saga-step rolled">ROLLED_BACK</div></div>
+      <div style="font-size:11px;color:#a78bfa;margin-top:4px">↩ Compensación ejecutada — débito revertido, dinero devuelto</div>`,
+    self: `
+      <div style="display:flex;align-items:center;gap:6px"><div class="saga-step failed">BLOCKED</div></div>
+      <div style="font-size:11px;color:var(--danger);margin-top:4px">✗ Auto-transferencia bloqueada antes de iniciar</div>`,
+  };
+  el.innerHTML = estados[state] || '<div style="color:var(--muted);font-size:12px">Esperando...</div>';
+}
+
+// ── HISTORIAL ────────────────────────────────────────────────
+async function cargarHistorial() {
+  const id = document.getElementById('h-id').value.trim();
+  const listEl = document.getElementById('h-list');
+  if (!id || isNaN(id) || parseInt(id) <= 0) {
+    listEl.innerHTML = '<div class="empty-state" style="color:var(--danger)">ID inválido</div>';
+    return;
+  }
+  listEl.innerHTML = '<div class="empty-state">Cargando historial...</div>';
+  try {
+    const r = await fetch(PROC + '/api/transactions/' + id);
+    const d = await r.json();
+    if (!r.ok) {
+      listEl.innerHTML = `<div class="empty-state" style="color:var(--danger)">${d.code}: ${d.error}</div>`;
+      return;
+    }
+    if (!d.transactions || d.transactions.length === 0) {
+      listEl.innerHTML = '<div class="empty-state">Sin transacciones registradas para este usuario</div>';
+      return;
+    }
+    const icons = { sent: '↑', received: '↓', recharge: '⬆' };
+    listEl.innerHTML = `<div style="font-size:12px;color:var(--muted);margin-bottom:10px">Total: ${d.total} transacciones</div>` +
+      '<div class="tx-list">' +
+      d.transactions.map(tx => `
+        <div class="tx-item">
+          <div class="tx-icon ${tx.type}">${icons[tx.type] || '?'}</div>
+          <div class="tx-info">
+            <div class="tx-title">${tx.type === 'sent' ? 'Enviado a #' + tx.receiver_id : 'Recibido de #' + tx.sender_id}</div>
+            <div class="tx-meta">${new Date(tx.created_at).toLocaleString('es-MX')} · TX #${tx.id}</div>
+          </div>
+          <div>
+            <div class="tx-amount ${tx.type}">${tx.type === 'sent' ? '-' : '+'}$${parseFloat(tx.amount).toFixed(2)}</div>
+            <div style="text-align:right;margin-top:4px"><span class="tx-status s-${tx.status.toLowerCase()}">${tx.status}</span></div>
+          </div>
+        </div>`).join('') + '</div>';
+  } catch {
+    listEl.innerHTML = '<div class="empty-state" style="color:var(--danger)">Error de conexión con el processor-service</div>';
+  }
+}
+
+// ── CONSOLA API ──────────────────────────────────────────────
+async function apiSend() {
+  const method = document.getElementById('api-method').value;
+  const url    = document.getElementById('api-url').value.trim();
+  const body   = document.getElementById('api-body').value.trim();
+  const resEl  = document.getElementById('api-res');
+  const statusEl = document.getElementById('api-status');
+
+  if (!url) return;
+  setRes(resEl, 'loading', 'Enviando...');
+  statusEl.textContent = '';
+  const t0 = Date.now();
+  try {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (method === 'POST' && body) opts.body = body;
+    const r = await fetch(url, opts);
+    const ms = Date.now() - t0;
+    const d = await r.json();
+    statusEl.textContent = `HTTP ${r.status} · ${ms}ms`;
+    statusEl.style.color = r.ok ? 'var(--accent2)' : 'var(--danger)';
+    setRes(resEl, r.ok ? 'success' : 'error', JSON.stringify(d, null, 2));
+  } catch (e) {
+    const ms = Date.now() - t0;
+    statusEl.textContent = `Error · ${ms}ms`;
+    statusEl.style.color = 'var(--danger)';
+    setRes(resEl, 'error', 'Error de conexión: ' + e.message);
+  }
+}
+
+function setUrl(method, url) {
+  document.getElementById('api-method').value = method;
+  document.getElementById('api-url').value = url;
+}
+
+// ── HELPERS ──────────────────────────────────────────────────
+function setRes(el, type, text) {
+  el.className = 'response-box ' + type;
+  el.textContent = text;
+}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast ' + type + ' show';
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ── INIT ─────────────────────────────────────────────────────
+checkHealth();
+loadDashboard();
+
+// Enter en inputs
+document.getElementById('s-id').addEventListener('keydown', e => e.key === 'Enter' && consultarSaldo());
+document.getElementById('h-id').addEventListener('keydown', e => e.key === 'Enter' && cargarHistorial());
+</script>
+</body>
+</html>

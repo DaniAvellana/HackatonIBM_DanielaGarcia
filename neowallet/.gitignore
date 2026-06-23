@@ -1,0 +1,45 @@
+# ============================================================
+# NeoWallet — .gitignore
+# Archivos que NO deben subirse a GitHub
+# ============================================================
+
+# Dependencias de Node.js
+# (se reinstalan con: npm install)
+node_modules/
+npm-debug.log*
+
+# Variables de entorno y credenciales
+# NUNCA subas este archivo — contiene contraseñas
+.env
+.env.local
+.env.*.local
+
+# Archivos de cobertura de tests
+# (se regeneran con: npm test)
+coverage/
+*.lcov
+
+# Archivos de resultados de tests temporales
+test-results-*.json
+
+# Archivos de sistema operativo
+.DS_Store           # macOS
+Thumbs.db           # Windows
+Desktop.ini         # Windows
+
+# Archivos de IDE / Editor
+.vscode/settings.json
+.idea/
+*.suo
+*.user
+
+# Logs
+logs/
+*.log
+
+# Archivos de build / compilación
+dist/
+build/
+
+# Docker: volúmenes locales (no se suben, se crean en el host)
+# (los volúmenes de datos de Postgres son locales de cada máquina)

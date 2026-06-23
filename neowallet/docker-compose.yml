@@ -1,0 +1,119 @@
+version: "3.9"
+
+# ============================================================
+# NeoWallet - Docker Compose
+# Levanta: 2 bases PostgreSQL + 2 microservicios Node.js
+# ============================================================
+
+services:
+
+  # ----------------------------------------------------------
+  # BASE DE DATOS: accounts_db (usuarios y saldos)
+  # ----------------------------------------------------------
+  accounts-db:
+    image: postgres:15-alpine          # imagen oficial ligera de Postgres
+    container_name: neowallet_accounts_db
+    restart: always                    # se reinicia sola si el servidor se apaga
+    environment:
+      POSTGRES_DB:       accounts_db
+      POSTGRES_USER:     ${ACCOUNTS_DB_USER}
+      POSTGRES_PASSWORD: ${ACCOUNTS_DB_PASSWORD}
+    ports:
+      - "5432:5432"                    # expone en localhost:5432 para debugging
+    volumes:
+      - accounts_db_data:/var/lib/postgresql/data          # datos persistentes
+      - ./database/accounts-db/init.sql:/docker-entrypoint-initdb.d/init.sql  # script de inicio
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${ACCOUNTS_DB_USER} -d accounts_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ----------------------------------------------------------
+  # BASE DE DATOS: processor_db (transacciones)
+  # ----------------------------------------------------------
+  processor-db:
+    image: postgres:15-alpine
+    container_name: neowallet_processor_db
+    restart: always
+    environment:
+      POSTGRES_DB:       processor_db
+      POSTGRES_USER:     ${PROCESSOR_DB_USER}
+      POSTGRES_PASSWORD: ${PROCESSOR_DB_PASSWORD}
+    ports:
+      - "5433:5432"                    # Puerto DISTINTO en el host para no chocar con accounts-db
+    volumes:
+      - processor_db_data:/var/lib/postgresql/data
+      - ./database/processor-db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PROCESSOR_DB_USER} -d processor_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ----------------------------------------------------------
+  # MICROSERVICIO 1: Accounts Service (puerto 3000)
+  # ----------------------------------------------------------
+  accounts-service:
+    build:
+      context: ./accounts-service
+      dockerfile: Dockerfile
+    container_name: neowallet_accounts_service
+    restart: always
+    environment:
+      NODE_ENV:    production
+      PORT:        3000
+      DB_HOST:     accounts-db         # nombre del servicio Docker (DNS interno)
+      DB_PORT:     5432
+      DB_NAME:     accounts_db
+      DB_USER:     ${ACCOUNTS_DB_USER}
+      DB_PASSWORD: ${ACCOUNTS_DB_PASSWORD}
+    ports:
+      - "3000:3000"
+    depends_on:
+      accounts-db:
+        condition: service_healthy     # espera a que Postgres esté listo
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+  # ----------------------------------------------------------
+  # MICROSERVICIO 2: Processor Service (puerto 3001)
+  # ----------------------------------------------------------
+  processor-service:
+    build:
+      context: ./processor-service
+      dockerfile: Dockerfile
+    container_name: neowallet_processor_service
+    restart: always
+    environment:
+      NODE_ENV:             production
+      PORT:                 3001
+      DB_HOST:              processor-db
+      DB_PORT:              5432
+      DB_NAME:              processor_db
+      DB_USER:              ${PROCESSOR_DB_USER}
+      DB_PASSWORD:          ${PROCESSOR_DB_PASSWORD}
+      ACCOUNTS_SERVICE_URL: http://accounts-service:3000   # URL interna de Docker
+    ports:
+      - "3001:3001"
+    depends_on:
+      processor-db:
+        condition: service_healthy
+      accounts-service:
+        condition: service_healthy     # espera a que accounts-service esté listo
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+
+# ----------------------------------------------------------
+# Volúmenes: almacenamiento persistente de Postgres
+# Los datos sobreviven si reinicias los contenedores
+# ----------------------------------------------------------
+volumes:
+  accounts_db_data:
+  processor_db_data:
