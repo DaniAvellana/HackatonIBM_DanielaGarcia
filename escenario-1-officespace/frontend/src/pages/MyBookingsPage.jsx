@@ -1,0 +1,153 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { getMyBookings, cancelBooking } from '../services/api';
+
+function MyBookingsPage() {
+  const navigate = useNavigate();
+  const email = localStorage.getItem('email');
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    loadBookings();
+  }, []);
+
+  const loadBookings = async () => {
+    try {
+      const response = await getMyBookings();
+      setBookings(response.data);
+    } catch (err) {
+      setError('Error al cargar tus reservas.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancel = async (id) => {
+    if (!window.confirm('¿Estás seguro de cancelar esta reserva?')) return;
+    try {
+      await cancelBooking(id);
+      setMessage('✅ Reserva cancelada correctamente.');
+      loadBookings();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Error al cancelar la reserva.');
+    }
+  };
+
+  const handleLogout = () => {
+    localStorage.clear();
+    navigate('/');
+  };
+
+  // Formatea la fecha y hora para mostrarla bonita
+  const formatDateTime = (datetime) => {
+    const date = new Date(datetime);
+    return date.toLocaleString('es-MX', {
+      year: 'numeric', month: 'long', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+  };
+
+  return (
+    <div style={styles.container}>
+      <div style={styles.header}>
+        <h1 style={styles.title}>🏢 OfficeSpace</h1>
+        <div>
+          <span style={styles.userInfo}>👤 {email}</span>
+          <button onClick={() => navigate('/search')} style={styles.navBtn}>Buscar Espacios</button>
+          <button onClick={handleLogout} style={styles.logoutBtn}>Cerrar Sesión</button>
+        </div>
+      </div>
+
+      <div style={styles.content}>
+        <h2>📋 Mis Reservas</h2>
+
+        {error && <p style={styles.error}>{error}</p>}
+        {message && <p style={styles.success}>{message}</p>}
+
+        {loading ? (
+          <p>Cargando reservas...</p>
+        ) : bookings.length === 0 ? (
+          <div style={styles.empty}>
+            <p>No tienes reservas activas.</p>
+            <button onClick={() => navigate('/search')} style={styles.searchBtn}>
+              Buscar un espacio
+            </button>
+          </div>
+        ) : (
+          <div style={styles.list}>
+            {bookings.map(booking => (
+              <div key={booking.id} style={{
+                ...styles.card,
+                borderLeft: booking.status === 'ACTIVE' ? '4px solid #48bb78' : '4px solid #e53e3e'
+              }}>
+                <div style={styles.cardHeader}>
+                  <h3 style={styles.spaceName}>{booking.space_name}</h3>
+                  <span style={{
+                    ...styles.status,
+                    backgroundColor: booking.status === 'ACTIVE' ? '#c6f6d5' : '#fed7d7',
+                    color: booking.status === 'ACTIVE' ? '#276749' : '#9b2c2c'
+                  }}>
+                    {booking.status === 'ACTIVE' ? '✅ Activa' : '❌ Cancelada'}
+                  </span>
+                </div>
+                <p>📍 {booking.floor} — {booking.type === 'SALA' ? 'Sala de juntas' : 'Escritorio'}</p>
+                <p>🕐 Inicio: {formatDateTime(booking.start_time)}</p>
+                <p>🕐 Fin: {formatDateTime(booking.end_time)}</p>
+                <p>👥 Asistentes: {booking.attendees}</p>
+
+                {booking.status === 'ACTIVE' && new Date(booking.start_time) > new Date() && (
+                  <button onClick={() => handleCancel(booking.id)} style={styles.cancelBtn}>
+                    🗑️ Cancelar Reserva
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const styles = {
+  container: { minHeight: '100vh', backgroundColor: '#f0f2f5' },
+  header: {
+    backgroundColor: '#4f46e5', color: 'white', padding: '16px 32px',
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+  },
+  title: { margin: 0, fontSize: '24px' },
+  userInfo: { marginRight: '16px', fontSize: '14px' },
+  navBtn: {
+    padding: '8px 16px', marginRight: '8px', backgroundColor: 'transparent',
+    color: 'white', border: '1px solid white', borderRadius: '6px', cursor: 'pointer'
+  },
+  logoutBtn: {
+    padding: '8px 16px', backgroundColor: '#e53e3e',
+    color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer'
+  },
+  content: { padding: '32px', maxWidth: '900px', margin: '0 auto' },
+  error: { color: '#e53e3e', backgroundColor: '#fff5f5', padding: '10px', borderRadius: '6px', marginBottom: '16px' },
+  success: { color: '#276749', backgroundColor: '#c6f6d5', padding: '10px', borderRadius: '6px', marginBottom: '16px' },
+  empty: { textAlign: 'center', padding: '48px', backgroundColor: 'white', borderRadius: '12px' },
+  searchBtn: {
+    padding: '12px 24px', backgroundColor: '#4f46e5',
+    color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', marginTop: '16px'
+  },
+  list: { display: 'flex', flexDirection: 'column', gap: '16px' },
+  card: {
+    backgroundColor: 'white', padding: '24px',
+    borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+  },
+  cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' },
+  spaceName: { color: '#4f46e5', margin: 0 },
+  status: { padding: '4px 12px', borderRadius: '20px', fontSize: '14px', fontWeight: 'bold' },
+  cancelBtn: {
+    padding: '8px 16px', backgroundColor: '#e53e3e',
+    color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', marginTop: '12px'
+  }
+};
+
+export default MyBookingsPage;

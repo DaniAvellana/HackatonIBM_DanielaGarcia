@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+
+  # Base de datos PostgreSQL
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: officespace
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secret123
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./shared-infra/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data:/var/lib/postgresql/data
+
+  # Microservicio A - Catálogo de espacios
+  catalog-service:
+    build: ./catalog-service
+    ports:
+      - "3000:3000"
+    environment:
+      DB_HOST: db
+      DB_USER: admin
+      DB_PASSWORD: secret123
+      DB_NAME: officespace
+      DB_PORT: 5432
+      JWT_SECRET: clave_super_secreta_officespace_2026
+    depends_on:
+      - db
+
+  # Microservicio B - Motor de reservas
+  booking-service:
+    build: ./booking-service
+    ports:
+      - "3001:3001"
+    environment:
+      DB_HOST: db
+      DB_USER: admin
+      DB_PASSWORD: secret123
+      DB_NAME: officespace
+      DB_PORT: 5432
+      JWT_SECRET: clave_super_secreta_officespace_2026
+    depends_on:
+      - db
+
+  # Frontend - Aplicación React
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - catalog-service
+      - booking-service
+
+volumes:
+  postgres_data:
+
