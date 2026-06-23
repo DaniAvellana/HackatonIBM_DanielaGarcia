@@ -41,13 +41,23 @@ function MyBookingsPage() {
     navigate('/');
   };
 
-  // Formatea la fecha y hora para mostrarla bonita
   const formatDateTime = (datetime) => {
     const date = new Date(datetime);
     return date.toLocaleString('es-MX', {
       year: 'numeric', month: 'long', day: 'numeric',
       hour: '2-digit', minute: '2-digit'
     });
+  };
+
+  // Determina el estado visual de la reserva
+  const getBookingStatus = (booking) => {
+    if (booking.status === 'CANCELLED') {
+      return { label: '❌ Cancelada', bg: '#fed7d7', color: '#9b2c2c', border: '#e53e3e' };
+    }
+    if (new Date(booking.end_time) < new Date()) {
+      return { label: '🏁 Finalizada', bg: '#e2e8f0', color: '#4a5568', border: '#a0aec0' };
+    }
+    return { label: '✅ Activa', bg: '#c6f6d5', color: '#276749', border: '#48bb78' };
   };
 
   return (
@@ -78,33 +88,36 @@ function MyBookingsPage() {
           </div>
         ) : (
           <div style={styles.list}>
-            {bookings.map(booking => (
-              <div key={booking.id} style={{
-                ...styles.card,
-                borderLeft: booking.status === 'ACTIVE' ? '4px solid #48bb78' : '4px solid #e53e3e'
-              }}>
-                <div style={styles.cardHeader}>
-                  <h3 style={styles.spaceName}>{booking.space_name}</h3>
-                  <span style={{
-                    ...styles.status,
-                    backgroundColor: booking.status === 'ACTIVE' ? '#c6f6d5' : '#fed7d7',
-                    color: booking.status === 'ACTIVE' ? '#276749' : '#9b2c2c'
-                  }}>
-                    {booking.status === 'ACTIVE' ? '✅ Activa' : '❌ Cancelada'}
-                  </span>
-                </div>
-                <p>📍 {booking.floor} — {booking.type === 'SALA' ? 'Sala de juntas' : 'Escritorio'}</p>
-                <p>🕐 Inicio: {formatDateTime(booking.start_time)}</p>
-                <p>🕐 Fin: {formatDateTime(booking.end_time)}</p>
-                <p>👥 Asistentes: {booking.attendees}</p>
+            {bookings.map(booking => {
+              const status = getBookingStatus(booking);
+              return (
+                <div key={booking.id} style={{
+                  ...styles.card,
+                  borderLeft: `4px solid ${status.border}`
+                }}>
+                  <div style={styles.cardHeader}>
+                    <h3 style={styles.spaceName}>{booking.space_name}</h3>
+                    <span style={{
+                      ...styles.status,
+                      backgroundColor: status.bg,
+                      color: status.color
+                    }}>
+                      {status.label}
+                    </span>
+                  </div>
+                  <p>📍 {booking.floor} — {booking.type === 'SALA' ? 'Sala de juntas' : 'Escritorio'}</p>
+                  <p>🕐 Inicio: {formatDateTime(booking.start_time)}</p>
+                  <p>🕐 Fin: {formatDateTime(booking.end_time)}</p>
+                  <p>👥 Asistentes: {booking.attendees}</p>
 
-                {booking.status === 'ACTIVE' && new Date(booking.start_time) > new Date() && (
-                  <button onClick={() => handleCancel(booking.id)} style={styles.cancelBtn}>
-                    🗑️ Cancelar Reserva
-                  </button>
-                )}
-              </div>
-            ))}
+                  {booking.status === 'ACTIVE' && new Date(booking.end_time) > new Date() && (
+                    <button onClick={() => handleCancel(booking.id)} style={styles.cancelBtn}>
+                      🗑️ Cancelar Reserva
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
