@@ -26,6 +26,7 @@ function SearchPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // ✅ CORRECCIÓN 1: handleDateChange limpia resultados al cambiar fecha
   const handleDateChange = (e) => {
     setDate(e.target.value);
     setSpaces([]);
@@ -38,14 +39,12 @@ function SearchPage() {
     setLoading(true);
     setError('');
 
-    // Si vienen horas, validamos que sean correctas
     if (startTime && endTime && endTime <= startTime) {
       setError('⚠️ La hora de fin debe ser mayor a la hora de inicio.');
       setLoading(false);
       return;
     }
 
-    // Si viene hora de inicio, validamos que no haya pasado
     if (startTime) {
       const ahora = new Date();
       const fechaHoraInicio = new Date(`${date}T${startTime}`);
@@ -54,24 +53,36 @@ function SearchPage() {
         setLoading(false);
         return;
       }
+    } else {
+      // ✅ CORRECCIÓN 2: Solo bloqueamos fechas ANTERIORES a hoy, no hoy mismo
+      const fechaSeleccionada = new Date(`${date}T00:00:00`);
+      const hoy = new Date();
+      hoy.setHours(0, 0, 0, 0);
+      if (fechaSeleccionada < hoy) {
+        setError('⚠️ La fecha seleccionada ya pasó. Por favor selecciona una fecha futura.');
+        setLoading(false);
+        return;
+      }
     }
 
     try {
+      const ahora = new Date();
+      const hoy = ahora.toLocaleDateString('en-CA');
+      const horaActual = `${ahora.getHours().toString().padStart(2, '0')}:${ahora.getMinutes().toString().padStart(2, '0')}`;
+      const horaInicio = startTime || (date === hoy ? horaActual : '00:00');
+      const horaFin = endTime || '23:59';
+
       const response = await getAvailableSpaces({
         date,
-        start_time: startTime || '00:00',
-        end_time: endTime || '23:59',
+        start_time: horaInicio,
+        end_time: horaFin,
         type,
         capacity
       });
 
-      // Filtramos por piso y recursos en el frontend
       let filtered = response.data;
 
-      if (floor) {
-        filtered = filtered.filter(s => s.floor === floor);
-      }
-
+      if (floor) filtered = filtered.filter(s => s.floor === floor);
       if (resources.has_projector) filtered = filtered.filter(s => s.has_projector);
       if (resources.has_ac) filtered = filtered.filter(s => s.has_ac);
       if (resources.has_microphone) filtered = filtered.filter(s => s.has_microphone);
@@ -124,29 +135,28 @@ function SearchPage() {
         <h2>Buscar Espacios Disponibles</h2>
 
         <form onSubmit={handleSearch} style={styles.form}>
-          {/* Fila 1: Fecha y horario */}
           <div style={styles.row}>
             <div style={styles.field}>
               <label style={styles.label}>Fecha</label>
+              {/* ✅ CORRECCIÓN 1: Usar handleDateChange */}
               <input type="date" value={date}
-                onChange={(e) => setDate(e.target.value)}
+                onChange={handleDateChange}
                 style={styles.input} required />
             </div>
             <div style={styles.field}>
-              <label style={styles.label}>Hora inicio</label>
+              <label style={styles.label}>Hora inicio (opcional)</label>
               <input type="time" value={startTime}
                 onChange={(e) => setStartTime(e.target.value)}
                 style={styles.input} />
             </div>
             <div style={styles.field}>
-              <label style={styles.label}>Hora fin</label>
+              <label style={styles.label}>Hora fin (opcional)</label>
               <input type="time" value={endTime}
                 onChange={(e) => setEndTime(e.target.value)}
                 style={styles.input} />
             </div>
           </div>
 
-          {/* Fila 2: Tipo, capacidad y piso */}
           <div style={styles.row}>
             <div style={styles.field}>
               <label style={styles.label}>Tipo de espacio</label>
@@ -174,7 +184,6 @@ function SearchPage() {
             </div>
           </div>
 
-          {/* Fila 3: Recursos */}
           <div style={styles.resourcesSection}>
             <label style={styles.label}>Recursos requeridos</label>
             <div style={styles.checkboxRow}>

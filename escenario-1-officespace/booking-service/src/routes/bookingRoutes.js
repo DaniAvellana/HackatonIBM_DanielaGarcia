@@ -34,7 +34,6 @@ router.get('/available', verifyToken, async (req, res) => {
   }
 
   try {
-    // Construimos la fecha y hora completa
     const startDateTime = `${date} ${start_time}`;
     const endDateTime = `${date} ${end_time}`;
 
@@ -43,9 +42,11 @@ router.get('/available', verifyToken, async (req, res) => {
       return res.status(400).json({ error: 'La hora de fin debe ser mayor a la hora de inicio' });
     }
 
-    // Validamos que no sea en el pasado
-    if (new Date(startDateTime) < new Date()) {
-      return res.status(400).json({ error: 'No puedes reservar en el pasado' });
+    // Validamos que no sea en el pasado (con 10 minutos de tolerancia)
+    const ahora = new Date();
+    ahora.setMinutes(ahora.getMinutes() - 10);
+    if (new Date(startDateTime) < ahora) {
+      return res.status(400).json({ error: 'No puedes buscar en el pasado' });
     }
 
     // Buscamos espacios que NO tengan reservas en ese horario
@@ -61,13 +62,11 @@ router.get('/available', verifyToken, async (req, res) => {
 
     const params = [startDateTime, endDateTime];
 
-    // Filtro opcional por tipo
     if (type) {
       query += ` AND type = $${params.length + 1}`;
       params.push(type);
     }
 
-    // Filtro opcional por capacidad mínima
     if (capacity) {
       query += ` AND capacity >= $${params.length + 1}`;
       params.push(parseInt(capacity));
@@ -98,8 +97,10 @@ router.post('/', verifyToken, async (req, res) => {
       return res.status(400).json({ error: 'La hora de fin debe ser mayor a la de inicio' });
     }
 
-    // Validamos que no sea en el pasado
-    if (new Date(startDateTime) < new Date()) {
+    // Validamos que no sea en el pasado (con 10 minutos de tolerancia)
+    const ahora = new Date();
+    ahora.setMinutes(ahora.getMinutes() - 10);
+    if (new Date(startDateTime) < ahora) {
       return res.status(400).json({ error: 'No puedes reservar en el pasado' });
     }
 
@@ -151,7 +152,6 @@ router.delete('/:id', verifyToken, async (req, res) => {
   const { id } = req.params;
 
   try {
-    // Verificamos que la reserva pertenece al usuario
     const booking = await pool.query(
       'SELECT * FROM bookings WHERE id = $1 AND user_id = $2',
       [id, req.user.id]
@@ -161,12 +161,13 @@ router.delete('/:id', verifyToken, async (req, res) => {
       return res.status(404).json({ error: 'Reserva no encontrada o no tienes permiso' });
     }
 
-    // Verificamos que la reserva sea futura
-    if (new Date(booking.rows[0].start_time) < new Date()) {
+    // Verificamos que la reserva sea futura (con 10 minutos de tolerancia)
+    const ahora = new Date();
+    ahora.setMinutes(ahora.getMinutes() - 10);
+    if (new Date(booking.rows[0].start_time) < ahora) {
       return res.status(400).json({ error: 'No puedes cancelar una reserva que ya pasó' });
     }
 
-    // Cambiamos el estado a CANCELLED en lugar de borrar
     await pool.query(
       "UPDATE bookings SET status = 'CANCELLED' WHERE id = $1",
       [id]
@@ -179,5 +180,4 @@ router.delete('/:id', verifyToken, async (req, res) => {
   }
 });
 
-// Exportamos el router
 module.exports = router;
