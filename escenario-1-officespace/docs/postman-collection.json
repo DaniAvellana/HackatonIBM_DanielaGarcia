@@ -1,0 +1,222 @@
+{
+  "info": {
+    "name": "OfficeSpace API",
+    "description": "Colección de pruebas para OfficeSpace",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login Admin",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Tiene token', () => {",
+                  "  const json = pm.response.json();",
+                  "  pm.expect(json.token).to.exist;",
+                  "  pm.environment.set('token', json.token);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "http://localhost:3000/auth/login",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"admin@corporativoalpha.com\", \"password\": \"Admin123\"}"
+            }
+          }
+        },
+        {
+          "name": "Login Colaborador",
+          "request": {
+            "method": "POST",
+            "url": "http://localhost:3000/auth/login",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"carlos.mendez@corporativoalpha.com\", \"password\": \"User123\"}"
+            }
+          }
+        },
+        {
+          "name": "Login Credenciales Invalidas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "http://localhost:3000/auth/login",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"email\": \"falso@email.com\", \"password\": \"wrong\"}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Spaces",
+      "item": [
+        {
+          "name": "Obtener todos los espacios",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Es un array', () => {",
+                  "  pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "http://localhost:3000/spaces",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+          }
+        },
+        {
+          "name": "Crear espacio (Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Tiene id', () => {",
+                  "  pm.expect(pm.response.json().id).to.exist;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "http://localhost:3000/spaces",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"name\": \"Sala Test\", \"type\": \"SALA\", \"capacity\": 8, \"floor\": \"Piso 1\", \"has_projector\": true, \"has_ac\": false, \"has_microphone\": false, \"has_screen\": true, \"has_long_tables\": false, \"has_movable_chairs\": false, \"has_whiteboard\": true}"
+            }
+          }
+        },
+        {
+          "name": "Sin token - debe fallar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 401', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "http://localhost:3000/spaces"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bookings",
+      "item": [
+        {
+          "name": "Buscar espacios disponibles",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Es un array', () => {",
+                  "  pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "http://localhost:3001/bookings/available?date=2026-06-25&start_time=09:00&end_time=11:00",
+              "query": [
+                {"key": "date", "value": "2026-06-25"},
+                {"key": "start_time", "value": "09:00"},
+                {"key": "end_time", "value": "11:00"}
+              ]
+            },
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+          }
+        },
+        {
+          "name": "Crear reserva",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": "http://localhost:3001/bookings",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{token}}"}
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"space_id\": 1, \"date\": \"2026-06-25\", \"start_time\": \"09:00\", \"end_time\": \"11:00\", \"attendees\": 5}"
+            }
+          }
+        },
+        {
+          "name": "Mis reservas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": "http://localhost:3001/bookings/my",
+            "header": [{"key": "Authorization", "value": "Bearer {{token}}"}]
+          }
+        }
+      ]
+    }
+  ]
+}
